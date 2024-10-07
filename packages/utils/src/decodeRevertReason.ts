@@ -17,10 +17,11 @@ const decodeRevertReasonContracts = new Interface([
 export function decodeRevertReason (data: string | Error, nullIfNoMatch = true): string | null {
   if (typeof data !== 'string') {
     const err = data as any
-    data = (err.data?.data ?? err.data ?? err.error.data) as string
+    const err2 = (err.data?.data ?? err.data ?? err.error.data) as any
+    data = (err2.data ?? err2) as string
   }
-  const methodSig = data.slice(0, 10)
-  const dataParams = '0x' + data.slice(10)
+  const methodSig = data.slice(0, 10);
+  const dataParams = `0x${data.slice(10)}`;
 
   try {
     // would be nice to add these to above "decodeRevertReasonContracts", but we can't add Error(string) to xface...
