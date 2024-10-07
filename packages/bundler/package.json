@@ -9,9 +9,9 @@
     "README.md"
   ],
   "scripts": {
-    "runop": "ts-node ./src/runner/runop.ts",
-    "bundler": "TS_NODE_TRANSPILE_ONLY=1 ts-node ./src/exec.ts --config ./localconfig/bundler.config.json",
-    "bundler-rip7560": "ts-node ./src/exec.ts --config ./localconfig/bundler.rip7560.config.json",
+    "runop": "tsx ./src/runner/runop.ts",
+    "bundler": "TS_NODE_TRANSPILE_ONLY=1 tsx ./src/exec.ts --config ./localconfig/bundler.config.json",
+    "bundler-rip7560": "tsx ./src/exec.ts --config ./localconfig/bundler.rip7560.config.json",
     "clear": "rm -rf dist artifacts cache src/types",
     "hardhat-compile": "hardhat compile",
     "hardhat-node": "npx hardhat node --no-deploy",
@@ -61,6 +61,7 @@
     "sinon": "^18.0.0",
     "solidity-coverage": "^0.7.21",
     "ts-node": ">=8.0.0",
+    "tsx": "4.19.1",
     "typechain": "^8.1.0"
   }
 }

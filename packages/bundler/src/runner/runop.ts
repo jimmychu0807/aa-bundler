@@ -12,6 +12,7 @@ import { Command } from 'commander'
 import { DeterministicDeployer, erc4337RuntimeVersion, SimpleAccountFactory__factory } from '@account-abstraction/utils'
 import fs from 'fs'
 import { HttpRpcClient, SimpleAccountAPI } from '@account-abstraction/sdk'
+
 import { runBundler } from '../runBundler'
 import { BundlerServer } from '../BundlerServer'
 import { getNetworkProvider } from '../Config'
@@ -36,8 +37,7 @@ class Runner {
     readonly accountOwner: Signer,
     readonly entryPointAddress = ENTRY_POINT,
     readonly index = 0
-  ) {
-  }
+  ) {}
 
   async getAddress (): Promise<string> {
     return await this.accountApi.getCounterFactualAddress()
@@ -48,7 +48,8 @@ class Runner {
     const chainId = net.chainId
     const dep = new DeterministicDeployer(this.provider)
     const accountDeployer = await DeterministicDeployer.getAddress(new SimpleAccountFactory__factory(), 0, [this.entryPointAddress])
-    // const accountDeployer = await new SimpleAccountFactory__factory(this.provider.getSigner()).deploy().then(d=>d.address)
+    console.log("accountDeployer:", accountDeployer);
+
     if (!await dep.isContractDeployed(accountDeployer)) {
       if (deploymentSigner == null) {
         console.log(`AccountDeployer not deployed at ${accountDeployer}. run with --deployFactory`)
@@ -57,6 +58,7 @@ class Runner {
       const dep1 = new DeterministicDeployer(deploymentSigner.provider as any, deploymentSigner)
       await dep1.deterministicDeploy(new SimpleAccountFactory__factory(), 0, [this.entryPointAddress])
     }
+
     this.bundlerProvider = new HttpRpcClient(this.bundlerUrl, this.entryPointAddress, chainId)
     this.accountApi = new SimpleAccountAPI({
       provider: this.provider,
@@ -114,6 +116,7 @@ async function main (): Promise<void> {
   let signer: Signer
   let deployFactory: boolean = opts.deployFactory
   let bundler: BundlerServer | undefined
+
   if (opts.selfBundler != null) {
     // todo: if node is geth, we need to fund our bundler's account:
     const signer = provider.getSigner()
@@ -136,6 +139,7 @@ async function main (): Promise<void> {
     bundler = await runBundler(argv)
     await bundler.asyncStart()
   }
+
   if (opts.mnemonic != null) {
     signer = Wallet.fromMnemonic(fs.readFileSync(opts.mnemonic, 'ascii').trim()).connect(provider)
   } else {
@@ -155,24 +159,21 @@ async function main (): Promise<void> {
       throw new Error('must specify --mnemonic')
     }
   }
+
   const accountOwner = new Wallet('0x'.padEnd(66, '7'))
+  console.log("accountOwner:", accountOwner.address);
 
   const index = opts.nonce ?? Date.now()
   console.log('using account index=', index)
-  const client = await new Runner(provider, opts.bundlerUrl, accountOwner, opts.entryPoint, index).init(deployFactory ? signer : undefined)
+
+  const client = await new Runner(provider, opts.bundlerUrl, accountOwner, opts.entryPoint, index)
+    .init(deployFactory ? signer : undefined)
 
   const addr = await client.getAddress()
+  const bal = await provider.getBalance(addr)
+  const isDeployed = await provider.getCode(addr).then(code => code !== '0x')
+  console.log(`account address: ${addr}, deployed: ${isDeployed}, balance: ${formatEther(bal)}`)
 
-  async function isDeployed (addr: string): Promise<boolean> {
-    return await provider.getCode(addr).then(code => code !== '0x')
-  }
-
-  async function getBalance (addr: string): Promise<BigNumber> {
-    return await provider.getBalance(addr)
-  }
-
-  const bal = await getBalance(addr)
-  console.log('account address', addr, 'deployed=', await isDeployed(addr), 'bal=', formatEther(bal))
   const gasPrice = await provider.getGasPrice()
   // TODO: actual required val
   const requiredBalance = gasPrice.mul(4e6)
@@ -189,11 +190,14 @@ async function main (): Promise<void> {
   const dest = addr
   const data = keccak256(Buffer.from('entryPoint()')).slice(0, 10)
   console.log('data=', data)
+
   await client.runUserOp(dest, data)
   console.log('after run1')
+
   // client.accountApi.overheads!.perUserOp = 30000
   await client.runUserOp(dest, data)
   console.log('after run2')
+
   await bundler?.stop()
 }
 

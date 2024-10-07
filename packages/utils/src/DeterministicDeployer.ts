@@ -48,7 +48,8 @@ export class DeterministicDeployer {
   }
 
   async isContractDeployed (address: string): Promise<boolean> {
-    return await this.provider.getCode(address).then(code => code.length > 2)
+    const code = await this.provider.getCode(address)
+    return code.length > 2;
   }
 
   async isDeployerDeployed (): Promise<boolean> {
